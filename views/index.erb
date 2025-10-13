@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Alerta de Bitcoin - Compra/Venta</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <style>
+    body { font-family: Arial; background: #f7f7f7; padding: 20px; }
+    h1 { text-align: center; }
+    .container { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+    .panel {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      width: 350px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .price-box {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.2em;
+    }
+    .label-box {
+      background: #f0f8ff;
+      border-left: 4px solid #1976d2;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+    }
+    .label-box p { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Gestor de alertas Bitcoin</h1>
+
+    <div class="price-box">
+      <p>📈 Precio actual: 
+        <span v-if="current_price">💲{{ current_price }}</span>
+        <span v-else>Cargando...</span>
+      </p>
+    </div>
+
+    <div class="container">
+      <!-- Panel de Compras -->
+      <div class="panel" :class="{disabled: buy_active}">
+        <h2>🟢 Configurar Compra</h2>
+        <label>Precio actual (USD):</label><br>
+        <input type="number" v-model="buy_price" step="0.01"><br><br>
+
+        <label>Porcentaje de caída para comprar (%):</label><br>
+        <input type="number" v-model="drop_percent" step="0.1"><br><br>
+
+        <button @click="activateBuy" >Activar compra</button>
+
+        <div v-if="buy_active" class="label-box">
+          <p>🔶 <strong>Alerta de compra activa</strong></p>
+          <p>Meta de compra: <strong>${{ target_buy.toFixed(2) }}</strong></p>
+        </div>
+      </div>
+
+      <!-- Panel de Ventas -->
+      <div class="panel" :class="{disabled: !buy_active}">
+        <h2>🔴 Configurar Venta</h2>
+        <label>Precio de compra (USD):</label><br>
+        <input type="number" v-model="sell_buy_price" step="0.01" :disabled="!buy_active"><br><br>
+
+        <label>Porcentaje de ganancia (%):</label><br>
+        <input type="number" v-model="profit_percent" step="0.1" :disabled="!buy_active"><br><br>
+
+        <button @click="activateSell" >Activar venta</button>
+
+        <div v-if="sell_active" class="label-box">
+          <p>🔶 <strong>Alerta de venta activa</strong></p>
+          <p>Meta de ganancia: <strong>${{ target_sell.toFixed(2) }}</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: "#app",
+      data: {
+        current_price: null,
+
+        // Área de compra
+        buy_price: "",
+        drop_percent: "",
+        buy_active: false,
+        target_buy: null,
+
+        // Área de venta
+        sell_buy_price: "",
+        profit_percent: "",
+        sell_active: false,
+        target_sell: null
+      },
+      methods: {
+        async fetchPrice() {
+          try {
+            const res = await fetch("/price");
+            const data = await res.json();
+            this.current_price = data.price;
+          } catch (err) {
+            console.error("Error obteniendo precio:", err);
+          }
+        },
+        activateBuy() {
+          if (!this.buy_price || !this.drop_percent)
+            return alert("Completa los campos de compra");
+
+          this.target_buy = this.buy_price - this.buy_price*( this.drop_percent / 100);
+          this.buy_active = true;
+          this.sell_active = false;
+          axios.post('/set_alert', {
+          buy_price: this.buy_price,
+          profit_percent: this.drop_percent,
+          drop_percent: this.drop_percent
+        });
+          alert(`Compra activada: objetivo $${this.target_buy.toFixed(2)}`);
+        },
+        activateSell() {
+          if (!this.sell_buy_price || !this.profit_percent)
+            return alert("Completa los campos de venta");
+
+          this.target_sell = this.sell_buy_price * (1 + this.profit_percent / 100);
+          this.sell_active = true;
+          this.buy_active = false;
+          axios.post('/set_alert', {
+          buy_price: this.sell_buy_price,
+          profit_percent: this.sell_buy_price,
+          drop_percent: this.profit_percent
+        });
+          alert(`Venta activada: objetivo $${this.target_sell.toFixed(2)}`);
+        }
+      },
+      mounted() {
+        this.fetchPrice();
+        setInterval(this.fetchPrice, 10000);
+      }
+    });
+  </script>
+</body>
+</html>
