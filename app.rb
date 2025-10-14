@@ -1,6 +1,10 @@
 require "sinatra"
 require "httparty"
 
+# Escuchar en todas las interfaces (0.0.0.0) para red local
+set :bind, '0.0.0.0'
+set :port, 4567
+
 # Configuración de tu bot
 BOT_TOKEN = "8309997028:AAF18YU_h0Qs0RsbPa_VKvZcTvRI4XAYLR0"
 CHAT_ID = "1936970256"
