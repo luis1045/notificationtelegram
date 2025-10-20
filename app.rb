@@ -26,9 +26,30 @@ def send_telegram_message(text)
   HTTParty.post(TELEGRAM_URL, body: { chat_id: CHAT_ID, text: text })
 end
 
+#def get_btc_price
+#  response = HTTParty.get(COINGECKO_URL)
+#  response["bitcoin"]["usd"]
+#end
+
 def get_btc_price
-  response = HTTParty.get(COINGECKO_URL)
-  response["bitcoin"]["usd"]
+  resp = HTTParty.get(COINGECKO_URL)
+  if resp.code == 429
+    puts "Demasiadas peticiones, esperando 20s..."
+    #sleep(20)
+    return fetch_price
+  elsif resp.success?
+    #sleep(15)
+    return resp['bitcoin']['usd']
+  else
+    puts "Error #{resp.code}"
+    return nil
+  end
+end
+
+get "/price" do
+  price = get_btc_price
+  content_type :json
+  { price: price }.to_json
 end
 
 Thread.new do
