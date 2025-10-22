@@ -11,9 +11,10 @@ CHAT_ID = "1936970256"
 TELEGRAM_URL = "https://api.telegram.org/bot#{BOT_TOKEN}/sendMessage"
 
 
-# Endpoint CoinGecko
+# Endpoint CoinGecko : solo permite 3 a 5 peticiones por segundo luego se bloquea
 COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
-
+#Endpoint de Binance : esto permite 1200 peticiones por segundo
+BINANCE_URL = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
 # Variables globales para la alerta
 $buy_price = nil
 $profit_percent = nil
@@ -32,14 +33,18 @@ end
 #end
 
 def get_btc_price
-  resp = HTTParty.get(COINGECKO_URL)
+  #resp = HTTParty.get(COINGECKO_URL)
+  resp = HTTParty.get(BINANCE_URL)
+  #puts"El Precio es :"+resp['bitcoin']['usd'].to_s
+  puts"El Precio es :"+resp['price'].to_s
   if resp.code == 429
     puts "Demasiadas peticiones, esperando 20s..."
     #sleep(20)
-    return fetch_price
+    return get_btc_price
   elsif resp.success?
     #sleep(15)
-    return resp['bitcoin']['usd']
+    #return resp['bitcoin']['usd']
+    return resp['price']
   else
     puts "Error #{resp.code}"
     return nil
