@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>Alerta de Bitcoin - Compra/Venta</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <style>
     body { font-family: Arial; background: #f7f7f7; padding: 20px; }
     h1 { text-align: center; }
@@ -61,7 +63,7 @@
       <!-- Panel de Compras -->
       <div class="panel" :class="{disabled: buy_active}">
         <h2>🟢 Configurar Compra</h2>
-        <label>Precio actual (USD):</label><br>
+        <label>Precio Venta (USD):</label><br>
         <input type="number" v-model="buy_price" step="0.01"><br><br>
 
         <label>Porcentaje de caída para comprar (%):</label><br>
@@ -130,9 +132,11 @@
           this.buy_active = true;
           this.sell_active = false;
           axios.post('/set_alert', {
-          buy_price: this.buy_price,
+          buyandsell_price: this.buy_price,
           profit_percent: this.drop_percent,
-          drop_percent: this.drop_percent
+          drop_percent: this.drop_percent,
+          //target_buy: this.target_buy,
+          type_operation: "buy"
         });
           alert(`Compra activada: objetivo $${this.target_buy.toFixed(2)}`);
         },
@@ -144,16 +148,18 @@
           this.sell_active = true;
           this.buy_active = false;
           axios.post('/set_alert', {
-          buy_price: this.sell_buy_price,
-          profit_percent: this.sell_buy_price,
-          drop_percent: this.profit_percent
+          buyandsell_price: this.sell_buy_price,
+          profit_percent: this.profit_percent,
+          drop_percent: this.profit_percent,
+          //target_sell: this.target_sell,
+          type_operation: "sell"
         });
           alert(`Venta activada: objetivo $${this.target_sell.toFixed(2)}`);
         }
       },
       mounted() {
         this.fetchPrice();
-        setInterval(this.fetchPrice, 500);
+        setInterval(this.fetchPrice, 20000);
       }
     });
   </script>

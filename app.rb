@@ -16,7 +16,7 @@ COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_cu
 #Endpoint de Binance : esto permite 1200 peticiones por segundo
 BINANCE_URL = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
 # Variables globales para la alerta
-$buy_price = nil
+$buyandshell_price = nil
 $profit_percent = nil
 $drop_percent = nil
 $target_profit = nil
@@ -40,7 +40,7 @@ def get_btc_price
   if resp.code == 429
     puts "Demasiadas peticiones, esperando 20s..."
     #sleep(20)
-    return get_btc_price
+    return get_btc_price#convierte a flotante el precio de bitcoin
   elsif resp.success?
     #sleep(15)
     #return resp['bitcoin']['usd']
@@ -59,22 +59,28 @@ end
 
 Thread.new do
   loop do
-    if $alert_stage
+    if !($type_operation.nil?)
       current_price = get_btc_price
-      puts "BTC: $#{current_price} | Stage: #{$alert_stage}"
+      puts "BTC: $#{current_price} | Stage: #{$type_operation}"
 
-      case $alert_stage
-      when :profit
-        if current_price >= $target_profit
-          $peak_price = current_price
+      case $type_operation
+      when "sell"
+        $target_profit = $buyandsell_price.to_f * (1 + $profit_percent / 100) # se recaulcula nuevamente el target de ganancia
+        puts "El la divucion de porcentaje es : #{$profit_percent.to_f/100}"
+        puts "precio actual #{current_price} , target de ganancia : #{$target_profit} "
+        puts "el valor en binario es : #{$target_profit <= current_price.to_f}"
+        if $target_profit <= current_price.to_f
+          puts "Entra a enviar mensaje de ganancia"
+          #$peak_price = current_price
           send_telegram_message("🚀 BTC alcanzó tu meta de ganancia en $#{$target_profit}! Ahora monitoreando retroceso.")
-          $alert_stage = :drop
         end
-      when :drop
-        drop_target = $peak_price * (1 - $drop_percent / 100)
-        if current_price <= drop_target
+      when "buy"
+        puts "El dropprice(%) es : #{$drop_percent}"
+        puts "El buyandshell_price es : #{$buyandsell_price}"
+        $drop_target = $buyandsell_price.to_f * (1 - $drop_percent / 100)
+        puts "precio actual #{current_price} , target de compra : #{$drop_target} "
+        if $drop_target >= current_price.to_f 
           send_telegram_message("🔄 BTC retrocedió #{$drop_percent}% desde el máximo. Precio actual: $#{current_price}. Considera recomprar.")
-          $alert_stage = nil
         end
       end
     end
@@ -88,19 +94,20 @@ end
 
 # Endpoint AJAX para configurar alertas
 post "/set_alert" do
+  puts "Entro a setear datos"
   data = JSON.parse(request.body.read)
-  $buy_price = data["buy_price"].to_f
+  $buyandsell_price = data["buyandsell_price"].to_f
   $profit_percent = data["profit_percent"].to_f
   $drop_percent = data["drop_percent"].to_f
   #variable para saber si esta en venta o en compra
-  $type_operation = data["type_opetation"].to_s
-
-  $target_profit = $buy_price * (1 + $profit_percent / 100)
-  $alert_stage = :profit
+  $type_operation = data["type_operation"].to_s
+  
+  #$alert_stage = :profit
+  puts "Alerta configurada: ComprarAndVenta en $#{$buyandsell_price}, con retroceso de #{$drop_percent}% avance de: #{$profit_percent}  tipo de operacion #{$type_operation}"
 
   content_type :json
   { status: "ok", 
-    target_profit: $target_profit.round(2), 
+    target_profit: $target_profit, 
     drop_percent: $drop_percent,
     stage: $alert_stage 
   }.to_json
