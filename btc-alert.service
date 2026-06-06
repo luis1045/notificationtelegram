@@ -1,0 +1,11 @@
+[Unit]
+Description=BTC Alert Sinatra
+
+[Service]
+User=orangepi
+WorkingDirectory=/home/orangepi/notificacion/notificationtelegram
+ExecStart=/usr/local/bin/bundle exec puma -b tcp://0.0.0.0:4567
+Restart=always
+
+[Install]
+WantedBy=multi-user.target 
